@@ -1,2 +1,7 @@
 # DIP-Final
-Final project of PKU DIP 2018
+### I. Install requirements
+
+```shell
+$ ./install-requirement.sh
+```
+
