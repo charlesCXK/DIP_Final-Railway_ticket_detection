@@ -12,13 +12,12 @@ class Binarization(object):
 	def binarize(selfself, train_data):
 		bin_img = []
 		for lines in train_data:
-			pic_path = '../train_data/' + lines
 			# flag = os.path.exists(pic_path)
 			# abspath = os.path.abspath(pic_path)
-			pic = cv2.imread(pic_path, cv2.IMREAD_GRAYSCALE)
+			pic = cv2.imread(lines[0], cv2.IMREAD_GRAYSCALE)
 			# pic = cv2.adaptiveThreshold(pic, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 9, 0)
 			ret, pic = cv2.threshold(pic, 100, 255, cv2.THRESH_BINARY)
-			# print(pic_path)
+			# print(lines[0])
 			# cv2.namedWindow("1", 0)
 			# cv2.resizeWindow("1", 1200, 900)
 			# cv2.imshow('1', pic)
