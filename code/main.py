@@ -31,7 +31,7 @@ def main():
     images = DataSet(root='../train_data', mode='all', ratio=0.8).data
 
     # 原始图像的list
-    pic = [cv2.imread(data[0], cv2.IMREAD_GRAYSCALE) for data in images][:10]  # 只操作 10 张图像
+    pic = [cv2.imread(data[0], cv2.IMREAD_GRAYSCALE) for data in images][:]  # 只操作 10 张图像
     pic_name = [data[1] for data in images]
 
     img_rectangle = [imagePipeline(p)[0] for p in pic]

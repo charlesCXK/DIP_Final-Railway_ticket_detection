@@ -11,19 +11,16 @@ from math import *
 [description]
 show the picture, just for debug
 '''
-
-
 def showImage(img):
-    cv2.imshow("img", img)
+    cv2.imshow("Image", img)
     cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 
 '''
 [description]
 图像二值化
 '''
-
-
 def binarize(pic):
     ret, binary = cv2.threshold(pic, 127, 255, cv2.THRESH_BINARY)
     return binary
@@ -35,8 +32,6 @@ def binarize(pic):
     pic_name: 图片名的list
     dir: 写文件的路径
 '''
-
-
 def writeImg(pic_list, pic_name, dir):
     if (os.path.exists(dir) == 0):
         os.mkdir(dir)
@@ -51,8 +46,6 @@ def writeImg(pic_list, pic_name, dir):
 [description]
 去除图像左右白边
 '''
-
-
 def removePadding(pic):
     pic_median = cv2.medianBlur(pic, 5)
     cols = np.size(pic, 1)
@@ -80,8 +73,6 @@ def removePadding(pic):
 [description]
 对图像进行形态学操作
 '''
-
-
 def morphology(img, mode, kernel_size):
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
     if mode == 'dilate':
@@ -99,8 +90,6 @@ def morphology(img, mode, kernel_size):
 [description]
 检测车票票面，返回矩形框的四个点
 '''
-
-
 class DetectRectangle(object):
     """docstring for DetectRectangle"""
 
@@ -112,7 +101,6 @@ class DetectRectangle(object):
     给定一个图像，返回最小矩形的四个点
     返回值：np.ndarray,size=(4,2)       中心坐标 (x, y)     旋转角度: [-90,0)
     '''
-
     def getRectangle(self, pic):
         _, contours, hierarchy = cv2.findContours(pic, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -152,7 +140,6 @@ class DetectRectangle(object):
     [description]
     将图像进行二值化，去噪，然后获取最小拟合矩形的四个点 [ [x1,y1], ... [x4,y4] ]
     '''
-
     def rectangleFitting(self, img):
         raw_img = img
         img = binarize(img)  # 二值化
@@ -198,7 +185,6 @@ class DetectRectangle(object):
     [description]
     旋转矩形裁剪
     '''
-
     def rotate(self, img, pt1, pt2, pt3, pt4):
         withRect = sqrt((pt4[0] - pt1[0]) ** 2 + (pt4[1] - pt1[1]) ** 2)  # 矩形框的宽度
         heightRect = sqrt((pt1[0] - pt2[0]) ** 2 + (pt1[1] - pt2[1]) ** 2)
@@ -240,8 +226,6 @@ class DetectRectangle(object):
 [description]
 校准图像，使其成为水平正图像
 '''
-
-
 class Calibration(object):
     """docstring for Calibration"""
 
@@ -249,25 +233,20 @@ class Calibration(object):
         super(Calibration, self).__init__()
         self.data = self.calibrate(img)
 
+    '''
+    [description]
+    将车票旋转成正常角度（即二维码在右下角的方向，并且横长竖短），并用白底补全缺损的图像
+    '''
     def calibrate(self, img):
-        img = self.reshape(img)
-        # img = self.flip(img)
-        # row是图像行数，col是图像列数
-        row = len(img)
-        col = np.size(img[0])
-        upper_left = img[0:int(row * 0.4), 0:int(col * 0.25)]
-        lower_right = img[int(row * 0.6):row, int(col * 0.75):col]
-        mean1 = np.mean(upper_left)
-        mean2 = np.mean(lower_right)
-        if(mean1 < mean2):
-            return cv2.flip(img, -1)
-        return img
+        pic = self.reshape(img)
+        pic = self.turnToCorrect(pic)
+        pic = self.completion(pic)
+        return pic
 
     '''
     [description]
     将图像旋转成横长竖短
     '''
-
     def reshape(self, img):
         w, h = img.shape
         if w > h:
@@ -279,7 +258,6 @@ class Calibration(object):
     [description]
     将图像旋转到正面
     '''
-
     def flip(self, img):
         w, h = img.shape
         left = img[:, :h // 2]
@@ -287,3 +265,54 @@ class Calibration(object):
         if np.sum(left) > np.sum(right):
             return img
         return cv2.flip(img, -1)
+
+    '''
+    [description]
+    将横长竖短的车票旋转成正常角度（即二维码在右下角的方向）
+    '''
+    def turnToCorrect(self, img):
+        # row是图像行数，col是图像列数
+        row = len(img)
+        col = np.size(img[0])
+        # 左上角和右下角
+        upper_left = img[0:int(row * 0.4), 0:int(col * 0.25)]
+        lower_right = img[int(row * 0.6):row, int(col * 0.75):col]
+        # 统计左上角和右下角灰度平均值，如果左上角均值较小，证明二维码在左上角，要旋转180°
+        mean1 = np.mean(upper_left)
+        mean2 = np.mean(lower_right)
+        if (mean1 < mean2):
+            return cv2.flip(img, -1)
+        return img
+
+    '''
+    [description]
+    探测图像长宽比，如有明显异常的，用白底补全缺损的部分
+    '''
+    def completion(self, img):
+        row = len(img)
+        col = np.size(img[0])
+        # 正常图像长宽比约为1.61
+        aspect_ratio = col / row
+        if (aspect_ratio < 1.55):
+            lower_right = img[int(row * 0.7):int(row * 0.8), col - 20:col]
+            mean1 = np.mean(lower_right)
+            col_new = int(row * 1.61)
+            img_new = np.zeros(shape=(row, col_new))
+            blank_array = []
+            for i in range(col_new):
+                blank_array.append(255)
+            # 二维码部分是否有缺损
+            if (mean1 < 128):  # 二维码有缺损，补全到右边
+                for i in range(row):
+                    np_blank = np.array(blank_array)
+                    for j in range(col):
+                        np_blank[j] = img[i][j]
+                    img_new[i] = np_blank
+            else:  # 二维码无缺损，补全到左边
+                for i in range(row):
+                    np_blank = np.array(blank_array)
+                    for j in range(col):
+                        np_blank[j + col_new - col] = img[i][j]
+                    img_new[i] = np_blank
+            return img_new
+        return img
