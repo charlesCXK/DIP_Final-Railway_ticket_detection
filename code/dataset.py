@@ -49,10 +49,10 @@ class DataSet(object):
 
 	'''
 	[description]
-	根据 训练/测试集，返回数据的可直接读取的路径
+	根据 训练/测试集，返回数据的可直接读取的路径、图片名、标签
 	'''
 	def make_dataset(self, root, mode, ratio):
-		assert mode in ['train', 'test']
+		assert mode in ['train', 'test', 'all']
 		train_data, train_label, test_data, test_label = self.get_train_test(ratio)
 		data_list = []
 
@@ -62,7 +62,11 @@ class DataSet(object):
 		elif mode == 'test':
 			data_path = test_data
 			label = test_label
+		else:
+			data_path = train_data + test_data
+			label = train_label + test_label
+
 
 		for i in range(len(data_path)):
-			data_list.append([os.path.join(root, data_path[i]), label[i]])
+			data_list.append([os.path.join(root, data_path[i]), data_path[i], label[i]])
 		return data_list
