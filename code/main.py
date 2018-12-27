@@ -24,7 +24,7 @@ def imagePipeline(img):
     calibrated_img = Calibration(rotated_img).data
 
     img_num21, box21 = Num21(calibrated_img).data
-    rotated_img21 = reshape(detectrectangle.rotate(calibrated_img, box21[0], box21[1], box21[2], box21[3]), flip=2)
+    rotated_img21 = removePadding(reshape(detectrectangle.rotate(calibrated_img, box21[0], box21[1], box21[2], box21[3]), flip=2))
     return img_rectangle, calibrated_img, img_num21, rotated_img21
 
 
@@ -32,7 +32,7 @@ def main():
     images = DataSet(root='../train_data', mode='all', ratio=0.8).data
 
     # 原始图像的list
-    pic = [cv2.imread(data[0], cv2.IMREAD_GRAYSCALE) for data in images][:]  # 只操作 10 张图像
+    pic = [cv2.imread(data[0], cv2.IMREAD_GRAYSCALE) for data in images][:]  # 测试新功能时只操作 10 张图像
     pic_name = [data[1] for data in images]
 
     img_rectangle, calibrated_img, img_num21, rotated_img21 = [], [], [], []
@@ -47,7 +47,6 @@ def main():
     writeImg(calibrated_img, pic_name, '../ticket_calibrated')
     writeImg(img_num21, pic_name, '../ticket_num21')
     writeImg(rotated_img21, pic_name, '../ticket_num21_rotated')
-
 
 
 if __name__ == '__main__':
