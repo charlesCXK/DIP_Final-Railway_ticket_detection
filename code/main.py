@@ -22,7 +22,10 @@ def imagePipeline(img):
 
     # 图像配准，调整方向
     calibrated_img = Calibration(rotated_img).data
-    return img_rectangle, calibrated_img
+
+    img_num21, box21 = Num21(calibrated_img).data
+    rotated_img21 = reshape(detectrectangle.rotate(calibrated_img, box21[0], box21[1], box21[2], box21[3]), flip=2)
+    return img_rectangle, calibrated_img, img_num21, rotated_img21
 
 
 def main():
@@ -32,13 +35,18 @@ def main():
     pic = [cv2.imread(data[0], cv2.IMREAD_GRAYSCALE) for data in images][:]  # 只操作 10 张图像
     pic_name = [data[1] for data in images]
 
-    img_rectangle = [imagePipeline(p)[0] for p in pic]
-    calibrated_img = [imagePipeline(p)[1] for p in pic]
+    img_rectangle, calibrated_img, img_num21, rotated_img21 = [], [], [], []
+    for i in range(len(pic)):
+        func_res = imagePipeline(pic[i])
+        img_rectangle.append(func_res[0])
+        calibrated_img.append(func_res[1])
+        img_num21.append(func_res[2])
+        rotated_img21.append(func_res[3])
+
     writeImg(img_rectangle, pic_name, '../ticket_rectangle')
     writeImg(calibrated_img, pic_name, '../ticket_calibrated')
-
-    img_num21 = [Num21(p).data for p in calibrated_img]
     writeImg(img_num21, pic_name, '../ticket_num21')
+    writeImg(rotated_img21, pic_name, '../ticket_num21_rotated')
 
 
 

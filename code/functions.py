@@ -85,6 +85,20 @@ def morphology(img, mode, kernel_size):
         img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
     return img
 
+'''
+[description]
+将图像旋转成横长竖短
+'''
+def reshape(img, flip=1):
+    w, h = img.shape
+    if w > h:
+        if flip==2:     # 逆时针旋转 90 °
+            return cv2.flip(cv2.flip(img, -1).transpose(1, 0), 1)
+        else:
+            return cv2.flip(img.transpose(1, 0), flip)
+    else:
+        return img
+
 
 '''
 [description]
@@ -108,27 +122,31 @@ class DetectRectangle(object):
         # print("contours:类型：", type(contours))
         # print("第0 个contours:", len(contours[0]))
         # print("contours amount:", len(contours))
-
-        # 若只有一个边框，直接拿来用；否则找到边长最大的那个边框作为车票的边框
-        if len(contours) > 1:
-            max_distance = -9999
-            target_index = -1
-            for i in range(len(contours)):
-                c = contours[i].squeeze()
-                if(len(c) < 3):
-                    continue
-                rect = cv2.minAreaRect(np.array(c))  # 最小拟合矩形
-                box = np.int0(cv2.boxPoints(rect))  # 通过box得出矩形框
-                point1 = np.array([box[0][0], box[0][1]])
-                point2 = np.array([box[1][0], box[1][1]])
-                point3 = np.array([box[2][0], box[2][1]])
-                distance = np.linalg.norm(point2 - point1) + np.linalg.norm(point3 - point2)
-                if distance > max_distance:
-                    max_distance = distance
-                    target_index = i
-            contours = contours[target_index].squeeze()
-        else:
-            contours = contours[0].squeeze()
+        
+        try:
+            # 若只有一个边框，直接拿来用；否则找到边长最大的那个边框作为车票的边框
+            if len(contours) > 1:
+                max_distance = -9999
+                target_index = -1
+                for i in range(len(contours)):
+                    c = contours[i].squeeze()
+                    if(len(c) < 3):
+                        continue
+                    rect = cv2.minAreaRect(np.array(c))  # 最小拟合矩形
+                    box = np.int0(cv2.boxPoints(rect))  # 通过box得出矩形框
+                    point1 = np.array([box[0][0], box[0][1]])
+                    point2 = np.array([box[1][0], box[1][1]])
+                    point3 = np.array([box[2][0], box[2][1]])
+                    distance = np.linalg.norm(point2 - point1) + np.linalg.norm(point3 - point2)
+                    if distance > max_distance:
+                        max_distance = distance
+                        target_index = i
+                contours = contours[target_index].squeeze()
+            else:
+                contours = contours[0].squeeze()
+        except:
+            showImage(pic)
+            exit()
         rect = cv2.minAreaRect(np.array(contours))  # 最小拟合矩形
         box = np.int0(cv2.boxPoints(rect))  # 通过box得出矩形框
 
@@ -246,21 +264,10 @@ class Calibration(object):
     将车票旋转成正常角度（即二维码在右下角的方向，并且横长竖短），并用白底补全缺损的图像
     '''
     def calibrate(self, img):
-        pic = self.reshape(img)
+        pic = reshape(img)
         pic = self.turnToCorrect(pic)
         pic = self.completion(pic)
         return pic
-
-    '''
-    [description]
-    将图像旋转成横长竖短
-    '''
-    def reshape(self, img):
-        w, h = img.shape
-        if w > h:
-            return cv2.flip(img.transpose(1, 0), 1)
-        else:
-            return img
 
     '''
     [description]
@@ -376,7 +383,8 @@ class Num21(object):
         img_sub1 = np.zeros((row_sub-del_row, col_sub))
         img_sub1 = img_sub0[0:row_sub-del_row, :]
 
-        img_sub2 = morphology(img_sub1, 'close', 11)
+        img_sub2 = morphology(img_sub1, 'close', 13)
+        # img_sub2 = morphology(img_sub1, 'open', 13)
 
         # 删除顶部多余的票面内容
         row_sub = len(img_sub2)
@@ -405,4 +413,4 @@ class Num21(object):
         color = (0, 0, 255)
         detectrectangle.drawLine(draw_img, box, color, 1)
 
-        return draw_img
+        return draw_img, box
