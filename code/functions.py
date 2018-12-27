@@ -11,8 +11,8 @@ from math import *
 [description]
 show the picture, just for debug
 '''
-def showImage(img):
-    cv2.imshow("Image", img)
+def showImage(img, img_name='Image'):
+    cv2.imshow(img_name, img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
@@ -21,8 +21,8 @@ def showImage(img):
 [description]
 图像二值化
 '''
-def binarize(pic):
-    ret, binary = cv2.threshold(pic, 127, 255, cv2.THRESH_BINARY)
+def binarize(pic, threshold=127):
+    ret, binary = cv2.threshold(pic, threshold, 255, cv2.THRESH_BINARY)
     return binary
 
 
@@ -101,6 +101,7 @@ class DetectRectangle(object):
     给定一个图像，返回最小矩形的四个点
     返回值：np.ndarray,size=(4,2)       中心坐标 (x, y)     旋转角度: [-90,0)
     '''
+
     def getRectangle(self, pic):
         _, contours, hierarchy = cv2.findContours(pic, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -114,11 +115,14 @@ class DetectRectangle(object):
             target_index = -1
             for i in range(len(contours)):
                 c = contours[i].squeeze()
+                if(len(c) < 3):
+                    continue
                 rect = cv2.minAreaRect(np.array(c))  # 最小拟合矩形
                 box = np.int0(cv2.boxPoints(rect))  # 通过box得出矩形框
                 point1 = np.array([box[0][0], box[0][1]])
                 point2 = np.array([box[1][0], box[1][1]])
-                distance = np.linalg.norm(point2 - point1)
+                point3 = np.array([box[2][0], box[2][1]])
+                distance = np.linalg.norm(point2 - point1) + np.linalg.norm(point3 - point2)
                 if distance > max_distance:
                     max_distance = distance
                     target_index = i
@@ -130,7 +134,11 @@ class DetectRectangle(object):
 
         return box, rect[0], rect[2]
 
-    def drawLine(self, draw_img, box, color, linewwidth=2):
+    '''
+    [description]
+    给定图片和四个顶点，在图中画出矩形
+    '''
+    def drawLine(self, draw_img, box, color=(0, 0, 255), linewwidth=2):
         cv2.line(draw_img, (box[0][0], box[0][1]), (box[1][0], box[1][1]), color, linewwidth)
         cv2.line(draw_img, (box[1][0], box[1][1]), (box[2][0], box[2][1]), color, linewwidth)
         cv2.line(draw_img, (box[2][0], box[2][1]), (box[3][0], box[3][1]), color, linewwidth)
@@ -293,26 +301,108 @@ class Calibration(object):
         col = np.size(img[0])
         # 正常图像长宽比约为1.61
         aspect_ratio = col / row
+        # 图像有缺损
         if (aspect_ratio < 1.55):
             lower_right = img[int(row * 0.7):int(row * 0.8), col - 20:col]
             mean1 = np.mean(lower_right)
             col_new = int(row * 1.61)
-            img_new = np.zeros(shape=(row, col_new))
-            blank_array = []
-            for i in range(col_new):
-                blank_array.append(255)
+            # img_new = np.zeros(shape=(row, col_new))
+            # blank_array = []
+            # for i in range(col_new):
+            #     blank_array.append(255)
             # 二维码部分是否有缺损
-            if (mean1 < 128):  # 二维码有缺损，补全到右边
-                for i in range(row):
-                    np_blank = np.array(blank_array)
-                    for j in range(col):
-                        np_blank[j] = img[i][j]
-                    img_new[i] = np_blank
+            np_blank = np.ones((row, col_new)) * 255
+            if (mean1 > 127):  # 右下角区域偏亮，二维码有缺损，补全到右边
+                np_blank[:, col_new - col:col_new] = img
+                # img_new[i] = np_blank
             else:  # 二维码无缺损，补全到左边
-                for i in range(row):
-                    np_blank = np.array(blank_array)
-                    for j in range(col):
-                        np_blank[j + col_new - col] = img[i][j]
-                    img_new[i] = np_blank
-            return img_new
+                np_blank[:, 0:col] = img
+            np_blank = np_blank.astype(np.uint8)
+            return np_blank
         return img
+
+'''
+[description]
+获取21位码
+'''
+class Num21(object):
+    """docstring for Num21"""
+
+    def __init__(self, img, pic_name='0'):
+        super(Num21, self).__init__()
+        self.data = self.num21(img, pic_name)
+
+    def num21(self, img, pic_name):
+        # 先二值化去除原图中阴影部分
+        binarized_img = binarize(img, 80)
+        row = len(img)
+        col = np.size(img[0])
+        img_sub = np.zeros((int(2*row/13), int(col/2)))
+        # 取反后做闭操作，使21位码连在一起
+        img_sub = cv2.bitwise_not(binarized_img[int(11*row/13):row, 0:int(col/2)])
+        # showImage(img_sub)
+
+        # 填充左下角圆角空隙
+        row_sub = len(img_sub)
+        col_sub = np.size(img_sub[0])
+        sub_range = int(row_sub/3)
+        img_zero = np.zeros((sub_range, sub_range))
+        img_zero = img_zero.astype(np.uint8)
+        img_sub[row_sub-sub_range:row_sub, 0:sub_range] = img_zero
+
+
+        # 删除左侧白边
+        sum_col = np.sum(img_sub, 0)
+        del_col = 0
+        for i in range(col_sub):
+            # 多余白字部分
+            if sum_col[i] > 255:
+                del_col += 1
+            else:
+                break
+        img_sub0 = np.zeros((row_sub, col_sub - del_col))
+        img_sub0 = img_sub[:, del_col:col_sub]
+
+        # 删除底部多余白边
+        row_sub = len(img_sub0)
+        col_sub = np.size(img_sub0[0])
+        del_row = 0
+        sum_row = np.sum(img_sub0, 1)
+        for i in range(row_sub):
+            if sum_row[row_sub-i-1] > 255:
+                del_row += 1
+            else:
+                break
+        img_sub1 = np.zeros((row_sub-del_row, col_sub))
+        img_sub1 = img_sub0[0:row_sub-del_row, :]
+
+        img_sub2 = morphology(img_sub1, 'close', 11)
+
+        # 删除顶部多余的票面内容
+        row_sub = len(img_sub2)
+        col_sub = np.size(img_sub2[0])
+        del_row = 0
+        sum_row = np.sum(img_sub2, 1)
+        for i in range(row_sub):
+            if sum_row[i] > 255:
+                del_row += 1
+            else:
+                break
+        img_sub3 = np.zeros((row_sub-del_row, col_sub))
+        img_sub3 = img_sub2[del_row:row_sub, :]
+
+        row_sub = len(img_sub3)
+        col_sub = np.size(img_sub3[0])
+        img_num = np.zeros((row, col))
+        img_num = img_num.astype(np.uint8)
+        img_num[row-row_sub:row, 0:col_sub] = img_sub3
+        # showImage(img_num)
+        detectrectangle = DetectRectangle()
+        box, center_pos, angle = detectrectangle.getRectangle(img_num)  # 获取最小拟合矩阵的四个角点
+
+        # 选一个图像，画矩形框
+        draw_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        color = (0, 0, 255)
+        detectrectangle.drawLine(draw_img, box, color, 1)
+
+        return draw_img

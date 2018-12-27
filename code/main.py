@@ -8,8 +8,6 @@ from functions import *
 [description]
 对单张图像进行的一系列操作
 '''
-
-
 def imagePipeline(img):
     # 去除白色边框
     # img = removePadding(img)  # 处理图像周围的白块
@@ -38,6 +36,10 @@ def main():
     calibrated_img = [imagePipeline(p)[1] for p in pic]
     writeImg(img_rectangle, pic_name, '../ticket_rectangle')
     writeImg(calibrated_img, pic_name, '../ticket_calibrated')
+
+    img_num21 = [Num21(p).data for p in calibrated_img]
+    writeImg(img_num21, pic_name, '../ticket_num21')
+
 
 
 if __name__ == '__main__':
