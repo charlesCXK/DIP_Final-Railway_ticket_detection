@@ -449,7 +449,7 @@ class Num21(object):
         return [draw_img, box_new]
 
 # 删除图片左右白边
-def picSlim(img):
+def picSlim(img, left_border = 0):
     img_bin = binarize(img, 80)
     sum_col = np.sum(img_bin, 0)
     sum_row = np.sum(img_bin, 1)
@@ -485,7 +485,7 @@ def picSlim(img):
             break
         else:
             lower_padding += 1
-    img_ret = img[upper_padding:row-lower_padding, left_padding:col-right_padding]
+    img_ret = img[upper_padding:row-lower_padding, left_padding-left_border:col-right_padding]
     return img_ret
 
 # 给定划分的个数以及box，在图上画出分割线
@@ -535,8 +535,8 @@ def drawSegLines(img, seg_num, box):
     box[2][1] += upper_padding
     box[0][1] -= lower_padding
     box[3][1] -= lower_padding
-    box[0][0] += left_padding
-    box[1][0] += left_padding
+    box[0][0] += left_padding - 3
+    box[1][0] += left_padding - 3
     box[2][0] -= right_padding
     box[3][0] -= right_padding
 
