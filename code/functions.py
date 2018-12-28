@@ -42,31 +42,31 @@ def writeImg(pic_list, pic_name, dir):
         cv2.imwrite(os.path.join(dir, pic_name[i]), pic_list[i])
 
 
-'''
-[description]
-去除图像左右白边
-'''
-def removePadding(pic):
-    pic_median = cv2.medianBlur(pic, 5)
-    cols = np.size(pic, 1)
-    lines = np.size(pic, 0)
-    # 去除左侧白边
-    for i in range(lines):
-        for j in range(cols):
-            if pic_median[i][j] == 0:
-                break
-            pic[i][j] = 0
-
-    # 去除右侧白边
-    for i in range(lines):
-        for j in range(cols):
-            if pic_median[i][cols - j - 1] == 0:
-                pad = cols - j
-                break
-    for i in range(lines):
-        for j in range(pad, cols):
-            pic[i][j] = 0
-    return pic
+# '''
+# [description]
+# 去除图像左右白边
+# '''
+# def removePadding(pic):
+#     pic_median = cv2.medianBlur(pic, 5)
+#     cols = np.size(pic, 1)
+#     lines = np.size(pic, 0)
+#     # 去除左侧白边
+#     for i in range(lines):
+#         for j in range(cols):
+#             if pic_median[i][j] == 0:
+#                 break
+#             pic[i][j] = 0
+#
+#     # 去除右侧白边
+#     for i in range(lines):
+#         for j in range(cols):
+#             if pic_median[i][cols - j - 1] == 0:
+#                 pad = cols - j
+#                 break
+#     for i in range(lines):
+#         for j in range(pad, cols):
+#             pic[i][j] = 0
+#     return pic
 
 
 '''

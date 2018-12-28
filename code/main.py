@@ -24,7 +24,7 @@ def imagePipeline(img):
     calibrated_img = Calibration(rotated_img).data
 
     img_num21, box21 = Num21(calibrated_img).data
-    rotated_img21 = removePadding(reshape(detectrectangle.rotate(calibrated_img, box21[0], box21[1], box21[2], box21[3]), flip=2))
+    rotated_img21 = picSlim(reshape(detectrectangle.rotate(calibrated_img, box21[0], box21[1], box21[2], box21[3]), flip=2))
     return img_rectangle, calibrated_img, img_num21, rotated_img21
 
 
