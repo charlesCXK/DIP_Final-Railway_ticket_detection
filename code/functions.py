@@ -42,33 +42,6 @@ def writeImg(pic_list, pic_name, dir):
         cv2.imwrite(os.path.join(dir, pic_name[i]), pic_list[i])
 
 
-# '''
-# [description]
-# 去除图像左右白边
-# '''
-# def removePadding(pic):
-#     pic_median = cv2.medianBlur(pic, 5)
-#     cols = np.size(pic, 1)
-#     lines = np.size(pic, 0)
-#     # 去除左侧白边
-#     for i in range(lines):
-#         for j in range(cols):
-#             if pic_median[i][j] == 0:
-#                 break
-#             pic[i][j] = 0
-#
-#     # 去除右侧白边
-#     for i in range(lines):
-#         for j in range(cols):
-#             if pic_median[i][cols - j - 1] == 0:
-#                 pad = cols - j
-#                 break
-#     for i in range(lines):
-#         for j in range(pad, cols):
-#             pic[i][j] = 0
-#     return pic
-
-
 '''
 [description]
 对图像进行形态学操作
@@ -92,12 +65,137 @@ def morphology(img, mode, kernel_size):
 def reshape(img, flip=1):
     w, h = img.shape
     if w > h:
-        if flip==2:     # 逆时针旋转 90 °
+        if flip==2:     # 逆时针旋转 90°
             return cv2.flip(cv2.flip(img, -1).transpose(1, 0), 1)
         else:
             return cv2.flip(img.transpose(1, 0), flip)
     else:
         return img
+
+'''
+[description]
+删除图片左右白边
+'''
+def picSlim(img, left_border = 0, right_border = 0):
+    img_bin = binarize(img, 80)
+    sum_col = np.sum(img_bin, 0)
+    sum_row = np.sum(img_bin, 1)
+    row = len(img)
+    col = np.size(img[0])
+    lim_col = row * 255
+    lim_row = col * 255
+    left_padding = 0
+    right_padding = 0
+    upper_padding = 0
+    lower_padding = 0
+    for i in range(col):
+        # 该列中有黑字
+        if(sum_col[i] < lim_col):
+            break
+        else:
+            left_padding += 1
+    for i in range(col):
+        # 该列中有黑字
+        if(sum_col[col-i-1] < lim_col):
+            break
+        else:
+            right_padding += 1
+    for i in range(row):
+        # 该行中有黑字
+        if (sum_row[i] < lim_row):
+            break
+        else:
+            upper_padding += 1
+    for i in range(row):
+        # 该列中有黑字
+        if(sum_row[row-i-1] < lim_row):
+            break
+        else:
+            lower_padding += 1
+    img_ret = img[upper_padding:row-lower_padding, left_padding-left_border:col-right_padding+right_border]
+    return img_ret
+
+'''
+[description]
+给定划分的个数以及box，在图上画出分割线
+'''
+def drawSegLines(img, seg_num, box):
+    gradient = (box[2][1] - box[1][1]) / (box[2][0] - box[1][0])
+    row_upper = min(b[1] for b in box)
+    row_lower = max(b[1] for b in box)
+    col_left = min(b[0] for b in box)
+    col_right = max(b[0] for b in box)
+    img_sub = img[row_upper:row_lower, col_left:col_right]
+    img_bin = binarize(img_sub, 80)
+    sum_col = np.sum(img_bin, 0)
+    sum_row = np.sum(img_bin, 1)
+    row = row_lower - row_upper
+    col = col_right - col_left
+    lim_col = row * 255
+    lim_row = col * 255
+    left_padding = 0
+    right_padding = 0
+    upper_padding = 0
+    lower_padding = 0
+    for i in range(col):
+        # 该列中有黑字
+        if(sum_col[i] < lim_col):
+            break
+        else:
+            left_padding += 1
+    for i in range(col):
+        # 该列中有黑字
+        if(sum_col[col-i-1] < lim_col):
+            break
+        else:
+            right_padding += 1
+    for i in range(row):
+        # 该行中有黑字
+        if (sum_row[i] < lim_row):
+            break
+        else:
+            upper_padding += 1
+    for i in range(row):
+        # 该列中有黑字
+        if(sum_row[row-i-1] < lim_row):
+            break
+        else:
+            lower_padding += 1
+    box[1][1] += upper_padding
+    box[2][1] += upper_padding
+    box[0][1] -= lower_padding
+    box[3][1] -= lower_padding
+    box[0][0] += left_padding - 3
+    box[1][0] += left_padding - 3
+    box[2][0] -= right_padding
+    box[3][0] -= right_padding
+
+    color = (0, 0, 255)
+    linewidth = 1
+    draw_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    detectrectangle = DetectRectangle()
+    detectrectangle.drawLine(draw_img, box, color, linewidth)
+    col_distance = int((box[2][0] - box[1][0]) / seg_num)
+    differ = box[2][0] - box[1][0] - col_distance * seg_num
+    x1 = box[0][0]
+    y1 = box[0][1]
+    x2 = box[1][0]
+    y2 = box[1][1]
+    if seg_num == 21:
+        for i in range(seg_num):
+            # 字母比数字大
+            if i == 14:
+                x1 += col_distance + differ
+                y1 += (col_distance + differ) * gradient
+                x2 += col_distance + differ
+                y2 += (col_distance + differ) * gradient
+            else:
+                x1 += col_distance
+                y1 += col_distance * gradient
+                x2 += col_distance
+                y2 += col_distance * gradient
+            cv2.line(draw_img, (int(x1), int(y1)), (int(x2), int(y2)), color, linewidth)
+    return draw_img
 
 
 '''
@@ -115,7 +213,6 @@ class DetectRectangle(object):
     给定一个图像，返回最小矩形的四个点
     返回值：np.ndarray,size=(4,2)       中心坐标 (x, y)     旋转角度: [-90,0)
     '''
-
     def getRectangle(self, pic):
         _, contours, hierarchy = cv2.findContours(pic, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -448,123 +545,67 @@ class Num21(object):
         draw_img = drawSegLines(img, 21, box_new)
         return [draw_img, box_new]
 
-# 删除图片左右白边
-def picSlim(img, left_border = 0):
-    img_bin = binarize(img, 80)
-    sum_col = np.sum(img_bin, 0)
-    sum_row = np.sum(img_bin, 1)
-    row = len(img)
-    col = np.size(img[0])
-    lim_col = row * 255
-    lim_row = col * 255
-    left_padding = 0
-    right_padding = 0
-    upper_padding = 0
-    lower_padding = 0
-    for i in range(col):
-        # 该列中有黑字
-        if(sum_col[i] < lim_col):
-            break
-        else:
-            left_padding += 1
-    for i in range(col):
-        # 该列中有黑字
-        if(sum_col[col-i-1] < lim_col):
-            break
-        else:
-            right_padding += 1
-    for i in range(row):
-        # 该行中有黑字
-        if (sum_row[i] < lim_row):
-            break
-        else:
-            upper_padding += 1
-    for i in range(row):
-        # 该列中有黑字
-        if(sum_row[row-i-1] < lim_row):
-            break
-        else:
-            lower_padding += 1
-    img_ret = img[upper_padding:row-lower_padding, left_padding-left_border:col-right_padding]
-    return img_ret
 
-# 给定划分的个数以及box，在图上画出分割线
-def drawSegLines(img, seg_num, box):
-    gradient = (box[2][1] - box[1][1]) / (box[2][0] - box[1][0])
-    row_upper = min(b[1] for b in box)
-    row_lower = max(b[1] for b in box)
-    col_left = min(b[0] for b in box)
-    col_right = max(b[0] for b in box)
-    img_sub = img[row_upper:row_lower, col_left:col_right]
-    img_bin = binarize(img_sub, 80)
-    sum_col = np.sum(img_bin, 0)
-    sum_row = np.sum(img_bin, 1)
-    row = row_lower - row_upper
-    col = col_right - col_left
-    lim_col = row * 255
-    lim_row = col * 255
-    left_padding = 0
-    right_padding = 0
-    upper_padding = 0
-    lower_padding = 0
-    for i in range(col):
-        # 该列中有黑字
-        if(sum_col[i] < lim_col):
-            break
-        else:
-            left_padding += 1
-    for i in range(col):
-        # 该列中有黑字
-        if(sum_col[col-i-1] < lim_col):
-            break
-        else:
-            right_padding += 1
-    for i in range(row):
-        # 该行中有黑字
-        if (sum_row[i] < lim_row):
-            break
-        else:
-            upper_padding += 1
-    for i in range(row):
-        # 该列中有黑字
-        if(sum_row[row-i-1] < lim_row):
-            break
-        else:
-            lower_padding += 1
-    box[1][1] += upper_padding
-    box[2][1] += upper_padding
-    box[0][1] -= lower_padding
-    box[3][1] -= lower_padding
-    box[0][0] += left_padding - 3
-    box[1][0] += left_padding - 3
-    box[2][0] -= right_padding
-    box[3][0] -= right_padding
 
-    color = (0, 0, 255)
-    linewidth = 1
-    draw_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-    detectrectangle = DetectRectangle()
-    detectrectangle.drawLine(draw_img, box, color, linewidth)
-    col_distance = int((box[2][0] - box[1][0]) / seg_num)
-    differ = box[2][0] - box[1][0] - col_distance * seg_num
-    x1 = box[0][0]
-    y1 = box[0][1]
-    x2 = box[1][0]
-    y2 = box[1][1]
-    if seg_num == 21:
-        for i in range(seg_num):
-            # 字母比数字大
-            if i == 14:
-                x1 += col_distance + differ
-                y1 += (col_distance + differ) * gradient
-                x2 += col_distance + differ
-                y2 += (col_distance + differ) * gradient
+'''
+[description]
+给定小图，分割出其中的数字与字母
+'''
+class SegElement21(object):
+    """docstring for SegElement21"""
+    def __init__(self, img):
+        super(SegElement21, self).__init__()
+        self.img = img
+        self.rt = self.segImage(img)
+
+    '''
+    [description]
+    返回分割后小图的列表
+    '''
+    def segImage(self, img):        
+        img = cv2.resize(img,(324, 30),interpolation=cv2.INTER_LINEAR)
+        h, w = img.shape
+        unit_scale = round(w / 21.6) # 平均一个单位元素的长度
+        seglist = self.generateSegDelta(unit_scale)     # 获取分割下标
+
+        data_list = []
+
+        # 数字的阈值
+        number_img = binarize(img, 60)
+        # 字母的阈值
+        letter_img = binarize(img, 80)
+
+        for i in range(len(seglist)):
+            if i != 14:
+                data_list.append(number_img[:, seglist[i][0]: seglist[i][1]])
             else:
-                x1 += col_distance
-                y1 += col_distance * gradient
-                x2 += col_distance
-                y2 += col_distance * gradient
-            cv2.line(draw_img, (int(x1), int(y1)), (int(x2), int(y2)), color, linewidth)
-    return draw_img
+                data_list.append(letter_img[:, seglist[i][0]: seglist[i][1]])
+        return data_list
+
+    '''
+    [description]
+    生成每个元素的起始下标与结束下标
+    '''
+    def generateSegDelta(self, unit_scale):
+        seglist = []
+        for i in range(14):
+            seglist.append([round(i*unit_scale), round(i*unit_scale+unit_scale)])
+        seglist.append([round(14*unit_scale), round(14*unit_scale)+round(unit_scale*1.6)])
+        for i in range(6):
+            seglist.append([round(14*unit_scale)+round(unit_scale*1.6)+round(i*unit_scale), round(14*unit_scale)+round(unit_scale*1.6)+round(i*unit_scale)+unit_scale])
+        return seglist
+
+        
 
     
+
+'''
+[description]
+获取7位码
+'''
+class Num7(object):
+    """docstring for Num7"""
+    def __init__(self, img):
+        super(Num7, self).__init__()
+        self.img = img
+        
