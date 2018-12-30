@@ -37,7 +37,7 @@ def imagePipeline(img):
 
     img_num_all = NumAll(calibrated_img, box21, box7).data
 
-    return img_rectangle, calibrated_img, img_num21, rotated_img21, seg_list, img_num7, rotated_img7, img_num_all
+    return img_rectangle, calibrated_img, seg_list, img_num_all
 
 
 def main():
@@ -55,13 +55,10 @@ def main():
         func_res = imagePipeline(pic[i])
         img_rectangle.append(func_res[0])
         calibrated_img.append(func_res[1])
-        img_num21.append(func_res[2])
-        rotated_img21.append(func_res[3])
-        img_num7.append(func_res[5])
-        img_num_all.append(func_res[7])
+        img_num_all.append(func_res[3])
 
         label21 = pic_label21[i]        # 该图片的21位码标签
-        seg_list = func_res[4]
+        seg_list = func_res[2]
         for j in range(21):
             if j != 14:
                 number_list.append(seg_list[j])
