@@ -29,13 +29,15 @@ def imagePipeline(img):
     img_num21, box21 = Num21(calibrated_img).data
     rotated_img21 = picSlim(reshape(detectrectangle.rotate(calibrated_img, box21[0], box21[1], box21[2], box21[3]), flip=2), 2)
 
+    seg_list = SegElement21(rotated_img21).rt
+
     # 获取 7 位码
     img_num7, box7 = Num7(calibrated_img).data
-    # rotated_img7 = picSlim(reshape(detectrectangle.rotate(calibrated_img, box21[0], box21[1], box21[2], box21[3]), flip=2), 2)
+    rotated_img7 = picSlim(reshape(detectrectangle.rotate(calibrated_img, box21[0], box21[1], box21[2], box21[3]), flip=2), 2)
 
+    img_num_all = NumAll(calibrated_img, box21, box7).data
 
-    seg_list = SegElement21(rotated_img21).rt
-    return img_rectangle, calibrated_img, img_num21, rotated_img21, seg_list
+    return img_rectangle, calibrated_img, img_num21, rotated_img21, seg_list, img_num7, rotated_img7, img_num_all
 
 
 def main():
@@ -46,7 +48,7 @@ def main():
     pic_name = [data[1] for data in images]
     pic_label21 = [data[2] for data in images]
 
-    img_rectangle, calibrated_img, img_num21, rotated_img21, number_list, letter_list = [], [], [], [], [], []
+    img_rectangle, calibrated_img, img_num21, rotated_img21, number_list, letter_list, img_num7, rotated_img7, img_num_all = [], [], [], [], [], [],[], [], []
     number_label, letter_label = [], []
     number_name, letter_name = [], []
     for i in range(len(pic)):
@@ -55,7 +57,8 @@ def main():
         calibrated_img.append(func_res[1])
         img_num21.append(func_res[2])
         rotated_img21.append(func_res[3])
-
+        img_num7.append(func_res[5])
+        img_num_all.append(func_res[7])
 
         label21 = pic_label21[i]        # 该图片的21位码标签
         seg_list = func_res[4]
@@ -76,7 +79,10 @@ def main():
 
     writeImg(img_rectangle, pic_name, '../ticket_rectangle')
     writeImg(calibrated_img, pic_name, '../ticket_calibrated')
-    writeImg(img_num21, pic_name, '../ticket_num21')
+    # 这两个图片list是中间过程的结果，最终不需要写到硬盘
+    # writeImg(img_num21, pic_name, '../ticket_num21')
+    # writeImg(img_num7, pic_name, '../ticket_num7')
+    writeImg(img_num_all, pic_name, '../ticket_num_all')
     writeImg(number_list, number_name, '../number_data')
     writeImg(letter_list, letter_name, '../letter_data')
 

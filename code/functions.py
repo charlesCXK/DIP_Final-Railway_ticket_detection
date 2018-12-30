@@ -120,82 +120,171 @@ def picSlim(img, left_border = 0, right_border = 0):
 给定划分的个数以及box，在图上画出分割线
 '''
 def drawSegLines(img, seg_num, box):
-    gradient = (box[2][1] - box[1][1]) / (box[2][0] - box[1][0])
-    row_upper = min(b[1] for b in box)
-    row_lower = max(b[1] for b in box)
-    col_left = min(b[0] for b in box)
-    col_right = max(b[0] for b in box)
-    img_sub = img[row_upper:row_lower, col_left:col_right]
-    img_bin = binarize(img_sub, 80)
-    sum_col = np.sum(img_bin, 0)
-    sum_row = np.sum(img_bin, 1)
-    row = row_lower - row_upper
-    col = col_right - col_left
-    lim_col = row * 255
-    lim_row = col * 255
-    left_padding = 0
-    right_padding = 0
-    upper_padding = 0
-    lower_padding = 0
-    for i in range(col):
-        # 该列中有黑字
-        if(sum_col[i] < lim_col):
-            break
-        else:
-            left_padding += 1
-    for i in range(col):
-        # 该列中有黑字
-        if(sum_col[col-i-1] < lim_col):
-            break
-        else:
-            right_padding += 1
-    for i in range(row):
-        # 该行中有黑字
-        if (sum_row[i] < lim_row):
-            break
-        else:
-            upper_padding += 1
-    for i in range(row):
-        # 该列中有黑字
-        if(sum_row[row-i-1] < lim_row):
-            break
-        else:
-            lower_padding += 1
-    box[1][1] += upper_padding
-    box[2][1] += upper_padding
-    box[0][1] -= lower_padding
-    box[3][1] -= lower_padding
-    box[0][0] += left_padding - 3
-    box[1][0] += left_padding - 3
-    box[2][0] -= right_padding
-    box[3][0] -= right_padding
+    # 重新排列box，使得四个顶点按照左下角，左上角，右上角，右下角的顺序排列
+    box_relist = []
+    box_new = []
+    for i in range(len(box)):
+        box_relist.append([box[i][0], box[i][1], box[i][0] + box[i][1]])
+    min_num = 10000
+    # 斜率一般不大，因此行列坐标和最小的是左下角，即box_new[0]
+    for i in range(4):
+        if box_relist[i][2] < min_num:
+            min_index = i
+            min_num = box_relist[i][2]
+    box_new.append([box_relist[min_index][0], box_relist[min_index][1]])
+    del (box_relist[min_index])
+
+    min_num = 10000
+    # box_new[1]
+    for i in range(3):
+        if abs(box_relist[i][0] - box_new[0][0]) < min_num:
+            min_index = i
+            min_num = abs(box_relist[i][0] - box_new[0][0])
+    box_new.append([box_relist[min_index][0], box_relist[min_index][1]])
+    del (box_relist[min_index])
+
+    min_num = 10000
+    # box_new[2]
+    for i in range(2):
+        if abs(box_relist[i][1] - box_new[1][1]) < min_num:
+            min_index = i
+            min_num = abs(box_relist[i][1] - box_new[1][1])
+    box_new.append([box_relist[min_index][0], box_relist[min_index][1]])
+    del (box_relist[min_index])
+
+    # box_new[3]
+    box_new.append([box_relist[0][0], box_relist[0][1]])
+
+    gradient = (box_new[2][1] - box_new[1][1]) / (box_new[2][0] - box_new[1][0])
 
     color = (0, 0, 255)
     linewidth = 1
-    draw_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    if img.ndim == 2:
+        draw_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    else:
+        draw_img = img
     detectrectangle = DetectRectangle()
-    detectrectangle.drawLine(draw_img, box, color, linewidth)
-    col_distance = int((box[2][0] - box[1][0]) / seg_num)
-    differ = box[2][0] - box[1][0] - col_distance * seg_num
-    x1 = box[0][0]
-    y1 = box[0][1]
-    x2 = box[1][0]
-    y2 = box[1][1]
+    detectrectangle.drawLine(draw_img, box_new, color, linewidth)
+
+    # 21位码分割
     if seg_num == 21:
+        # box_new[0][0] += -3
+        # box_new[1][0] += -3
+
+        # 划分比例，字母大约是数字的1.6倍
+        col_distance = box_new[2][0] - box_new[1][0]
+        x1 = box_new[0][0]
+        y1 = box_new[0][1]
+        x2 = box_new[1][0]
+        y2 = box_new[1][1]
+
         for i in range(seg_num):
             # 字母比数字大
-            if i == 14:
-                x1 += col_distance + differ
-                y1 += (col_distance + differ) * gradient
-                x2 += col_distance + differ
-                y2 += (col_distance + differ) * gradient
+            if i < 14:
+                x3 = x1 + int(i * col_distance / 21.45)
+                x4 = x2 + int(i * col_distance / 21.45)
+            if i >= 14:
+                x3 = x1 + int((i + 0.45) * col_distance / 21.45)
+                x4 = x2 + int((i + 0.45) * col_distance / 21.45)
+            y3 = y1 + int((x3 - x1) * gradient)
+            y4 = y2 + int((x4 - x2) * gradient)
+            cv2.line(draw_img, (x3, y3), (x4, y4), color, linewidth)
+
+    # 7位码分割
+    else:
+        # if(box_new[0][0] <= 3):
+        #     box_new[0][0] = 3
+        # if(box_new[1][0] <= 3):
+        #     box_new[1][0] = 3
+        # box_new[0][0] += -3
+        # box_new[1][0] += -3
+
+        # 划分比例，字母大约是数字的1.6倍
+        col_distance = box_new[2][0] - box_new[1][0]
+        x1 = box_new[0][0]
+        y1 = box_new[0][1]
+        x2 = box_new[1][0]
+        y2 = box_new[1][1]
+
+        for i in range(seg_num):
+            # 字母比数字大
+            if(i > 0):
+                x3 = x1 + int((i + 0.45) * col_distance / 7.45)
+                x4 = x2 + int((i + 0.45) * col_distance / 7.45)
+                y3 = y1 + int((x3 - x1) * gradient)
+                y4 = y2 + int((x4 - x2) * gradient)
             else:
-                x1 += col_distance
-                y1 += col_distance * gradient
-                x2 += col_distance
-                y2 += col_distance * gradient
-            cv2.line(draw_img, (int(x1), int(y1)), (int(x2), int(y2)), color, linewidth)
+                x3 = x1
+                x4 = x2
+                y3 = y1
+                y4 = y2
+            cv2.line(draw_img, (x3, y3), (x4, y4), color, linewidth)
     return draw_img
+
+'''
+[description]
+找到二维码的位置，返回二维码矩形框四个顶点的box数组
+'''
+def findBitcode(img):
+    # 先二值化去除原图中阴影部分
+    binarized_img = binarize(img, 20)
+    row = len(img)
+    col = np.size(img[0])
+
+    # 截取右下角二维码部分并做闭操作
+    lower_right0 = binarized_img[int(row * 0.55):row, int(col * 0.72):col]
+    lower_right0 = cv2.bitwise_not(lower_right0)
+    col_bitcode_ori = np.size(lower_right0[0])
+    col_bitcode_ori = int(col_bitcode_ori / 2)
+    # 由于有二维码缺损的异常数据，只取左边一半
+    lower_right1 = lower_right0[:, 0:col_bitcode_ori]
+    lower_right1 = morphology(lower_right1, 'close', 21)
+
+    row_bitcode = len(lower_right1)
+    col_bitcode = np.size(lower_right1[0])
+    # 去掉右下角圆角和矩形外边缘空隙
+    # img_zero = np.zeros((40, 40))
+    # img_zero = img_zero.astype(np.uint8)
+    # lower_right1[row_bitcode-40:row_bitcode, col_bitcode-40:col_bitcode] = img_zero
+    #
+    # # 删除右侧白边
+    # row_sub = len(lower_right1)
+    # col_sub = np.size(lower_right1[0])
+    # sum_col = np.sum(lower_right1, 0)
+    # del_col = 0
+    # for i in range(col_sub):
+    #     # 多余白字部分
+    #     if sum_col[col_sub-i-1] > 255:
+    #         del_col += 1
+    #     else:
+    #         break
+    # lower_right2 = np.zeros((row_sub, col_sub - del_col))
+    # lower_right2 = lower_right1[:, 0:col_sub-del_col]
+
+    # 删除底部白边
+    row_sub = len(lower_right1)
+    col_sub = np.size(lower_right1[0])
+    del_row = 0
+    sum_row = np.sum(lower_right1, 1)
+    for i in range(row_sub):
+        if sum_row[row_sub - i - 1] > 255:
+            del_row += 1
+        else:
+            break
+    lower_right2 = lower_right1
+    lower_right2[row_sub - del_row:row_sub, :] = 0
+
+    # 在黑色背景中对应位置放入左半边二维码
+    img_res = np.zeros((row, col))
+    img_res = img_res.astype(np.uint8)
+    img_res[row - row_bitcode:row, col - col_bitcode - col_bitcode_ori:col - col_bitcode_ori] = lower_right2
+    # showImage(img_res)
+
+    # 在上图中圈出二维码所在矩形框
+    detectrectangle = DetectRectangle()
+    box, center_pos, angle = detectrectangle.getRectangle(img_res)
+    # print(box)
+    return box
 
 
 '''
@@ -425,13 +514,15 @@ class Calibration(object):
             return np_blank
         return img
 
+
 '''
 [description]
 获取21位码
 '''
 class Num21(object):
     """docstring for Num21"""
-
+    
+    # pic_name是调试时用的参数，方便找到分割出错的图片
     def __init__(self, img, pic_name='0'):
         super(Num21, self).__init__()
         self.data = self.num21(img, pic_name)
@@ -441,66 +532,14 @@ class Num21(object):
         binarized_img = binarize(img, 20)
         row = len(img)
         col = np.size(img[0])
-
-        # 截取右下角二维码部分并做闭操作
-        lower_right0 = binarized_img[int(row*0.55):row, int(col*0.72):col]
-        lower_right0 = cv2.bitwise_not(lower_right0)
-        col_bitcode_ori = np.size(lower_right0[0])
-        col_bitcode_ori = int(col_bitcode_ori/2)
-        # 由于有二维码缺损的异常数据，只取左边一半
-        lower_right1 = lower_right0[:, 0:col_bitcode_ori]
-        lower_right1 = morphology(lower_right1, 'close', 21)
-
-        row_bitcode = len(lower_right1)
-        col_bitcode = np.size(lower_right1[0])
-        # 去掉右下角圆角和矩形外边缘空隙
-        # img_zero = np.zeros((40, 40))
-        # img_zero = img_zero.astype(np.uint8)
-        # lower_right1[row_bitcode-40:row_bitcode, col_bitcode-40:col_bitcode] = img_zero
-        #
-        # # 删除右侧白边
-        # row_sub = len(lower_right1)
-        # col_sub = np.size(lower_right1[0])
-        # sum_col = np.sum(lower_right1, 0)
-        # del_col = 0
-        # for i in range(col_sub):
-        #     # 多余白字部分
-        #     if sum_col[col_sub-i-1] > 255:
-        #         del_col += 1
-        #     else:
-        #         break
-        # lower_right2 = np.zeros((row_sub, col_sub - del_col))
-        # lower_right2 = lower_right1[:, 0:col_sub-del_col]
-
-        # 删除底部白边
-        row_sub = len(lower_right1)
-        col_sub = np.size(lower_right1[0])
-        del_row = 0
-        sum_row = np.sum(lower_right1, 1)
-        for i in range(row_sub):
-            if sum_row[row_sub-i-1] > 255:
-                del_row += 1
-            else:
-                break
-        lower_right2 = lower_right1
-        lower_right2[row_sub-del_row:row_sub, :] = 0
-
-        # 在黑色背景中对应位置放入左半边二维码
-        img_res = np.zeros((row, col))
-        img_res = img_res.astype(np.uint8)
-        img_res[row-row_bitcode:row, col-col_bitcode-col_bitcode_ori:col-col_bitcode_ori] = lower_right2
-        # showImage(img_res)
-
-        # 在上图中圈出二维码所在矩形框
-        detectrectangle = DetectRectangle()
-        box, center_pos, angle = detectrectangle.getRectangle(img_res)
-        # print(box)
+        
+        box = findBitcode(img)
 
         '''
         二维码高4.5
-        21位码右边距离二维码左边9.7
-        21位码顶边距离二维码底边0.4
-        21位码长10.6，高1.0
+        21位码右边距离二维码左边9.3
+        21位码顶边距离二维码底边0.3
+        21位码长10.4，高1.0
         二维码的高度固定，以它为标准
         '''
         row_bitcode_upper = min(b[1] for b in box)
@@ -537,6 +576,7 @@ class Num21(object):
         img_res[row_num21_upper:row_num21_lower, col_num21_left:col_num21_right] = num21_rect
 
         # 在原图中画出21位码矩形框
+        detectrectangle = DetectRectangle()
         box_new, center_pos, angle = detectrectangle.getRectangle(img_res)
         # draw_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
         # cv2.line(draw_img, (box_new[0][0], box_new[0][1]), (box_new[1][0], box_new[1][1]), (0, 0, 255), 2)
@@ -605,7 +645,99 @@ class SegElement21(object):
 '''
 class Num7(object):
     """docstring for Num7"""
-    def __init__(self, img):
+    def __init__(self, img, pic_name='0'):
         super(Num7, self).__init__()
-        self.img = img
-        
+        self.data = self.num7(img, pic_name)
+
+    def num7(self, img, pic_name):
+
+        # 先二值化去除原图中噪声，七位码的灰度值在60~120之间
+        binarized_img = (img > 60).astype(np.uint8) & (img < 120).astype(np.uint8)
+        binarized_img = binarized_img.astype(np.uint8) * 255
+        row = len(img)
+        col = np.size(img[0])
+        # 定位二维码
+        box = findBitcode(img)
+
+        '''
+        二维码高4.5
+        7位码右边距离二维码左边14.8
+        7位码底边距离二维码底边8.9
+        7位码长5.7，高1.1
+        但7位码的位置偏差较大，需要框出更大的范围
+        二维码的高度固定，以它为标准
+        '''
+        row_bitcode_upper = min(b[1] for b in box)
+        row_bitcode_lower = max(b[1] for b in box)
+        col_bitcode_left = min(b[0] for b in box)
+        col_bitcode_right = max(b[0] for b in box)
+        row_bitcode_distance = row_bitcode_lower - row_bitcode_upper
+        row_num7_upper = row_bitcode_upper - int(10.7 / 4.5 * row_bitcode_distance)
+        row_num7_lower = row_bitcode_upper - int(7.3 / 4.5 * row_bitcode_distance)
+        col_num7_right = col_bitcode_left - int(13 / 4.5 * row_bitcode_distance)
+        col_num7_left = col_bitcode_left - int(22.2 / 4.5 * row_bitcode_distance)
+        if row_num7_upper < 0:
+            row_num7_upper = 0
+        if col_num7_left < 0:
+            col_num7_left = 0
+
+        # 取出二值化图中上一步圈出的矩形框区域
+        row_sub = row_num7_lower - row_num7_upper
+        col_sub = col_num7_right - col_num7_left
+        num7_rect = np.zeros((row_sub, col_sub))
+        num7_rect = binarized_img[row_num7_upper:row_num7_lower, col_num7_left:col_num7_right]
+
+        #
+        # if(pic_name == '2018-5-22-20-0-13.bmp' or pic_name == '2018-5-22-19-55-2.bmp'):
+        #     showImage(num7_rect, pic_name)
+        #     for i in range(row_sub):
+        #         print(i)
+        #         print(num7_rect[i])
+        #         print()
+
+        # 票面中汉字的边缘和七位码灰度值在同一范围，利用均值滤波+阈值分割去掉汉字边缘部分
+        num7_rect = cv2.blur(num7_rect, (3, 3))
+        num7_rect = binarize(num7_rect, 86)
+        # 现在汉字边缘仍有残留的白点，利用中值滤波去除这些盐噪声
+        num7_rect = cv2.medianBlur(num7_rect, 3)
+
+        num7_rect = morphology(num7_rect, 'close', 19)
+        num7_rect = morphology(num7_rect, 'dilate', 11)
+        # for i in range(row_sub):
+        #     print(i)
+        #     print(num7_rect[i])
+        #     print()
+        # showImage(num7_rect)
+        # num7_rect = img[row_num7_upper:row_num7_lower, col_num7_left:col_num7_right]
+        # showImage(num7_rect)
+        # np.set_printoptions(threshold=np.NaN)
+            # print()
+        # num7_rect = cv2.bitwise_not(num7_rect)
+        # num7_rect = morphology(num7_rect, 'close', 15)
+        # num7_rect = morphology(num7_rect, 'dilate', 7)
+        # showImage(num7_rect)
+
+        img_res = np.zeros((row, col))
+        img_res = img_res.astype(np.uint8)
+        img_res[row_num7_upper:row_num7_lower, col_num7_left:col_num7_right] = num7_rect
+
+        # 在原图中画出7位码矩形框
+        detectrectangle = DetectRectangle()
+        box_new, center_pos, angle = detectrectangle.getRectangle(img_res)
+
+        draw_img = drawSegLines(img, 7, box_new)
+        # showImage(draw_img, pic_name)
+        return [draw_img, box_new]
+
+class NumAll(object):
+    """docstring for NumAll"""
+    def __init__(self, img, box_21, box_7, pic_name='0'):
+        super(NumAll, self).__init__()
+        self.data = self.numAll(img, box_21, box_7, pic_name)
+
+    def numAll(self, img, box_21, box_7, pic_name):
+        draw_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        draw_img = drawSegLines(draw_img, 21, box_21)
+        draw_img = drawSegLines(draw_img, 7, box_7)
+        # showImage(draw_img)
+        return draw_img
