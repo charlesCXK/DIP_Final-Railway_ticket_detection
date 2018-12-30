@@ -224,7 +224,7 @@ def findBitcode(img):
     row = len(img)
     col = np.size(img[0])
 
-    # 截取右下角二维码部分并做闭操作
+    # 截取右下角二维码部分，取反并做闭操作
     lower_right0 = binarized_img[int(row * 0.55):row, int(col * 0.72):col]
     lower_right0 = cv2.bitwise_not(lower_right0)
     col_bitcode_ori = np.size(lower_right0[0])
@@ -627,9 +627,6 @@ class SegElement21(object):
         for i in range(6):
             seglist.append([round(14*unit_scale)+round(unit_scale*1.6)+round(i*unit_scale), round(14*unit_scale)+round(unit_scale*1.6)+round(i*unit_scale)+unit_scale])
         return seglist
-
-        
-
     
 
 '''
@@ -693,9 +690,10 @@ class Num7(object):
         num7_rect = binarize(num7_rect, 86)
         # 现在汉字边缘仍有残留的白点，利用中值滤波去除这些盐噪声
         num7_rect = cv2.medianBlur(num7_rect, 3)
-
+        num7_rect = cv2.medianBlur(num7_rect, 3)
         num7_rect = morphology(num7_rect, 'close', 19)
         num7_rect = morphology(num7_rect, 'dilate', 11)
+
         # for i in range(row_sub):
         #     print(i)
         #     print(num7_rect[i])
