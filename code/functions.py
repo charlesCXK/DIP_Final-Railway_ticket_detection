@@ -178,18 +178,17 @@ def drawSegLines(img, seg_num, box):
         x2 = box_new[1][0]
         y2 = box_new[1][1]
 
-        for i in range(seg_num):
+        for i in range(1, seg_num):
             # 字母比数字大
-            if i < 14:
+            if i < 15:
                 x3 = x1 + int(i * col_distance / 21.45)
                 x4 = x2 + int(i * col_distance / 21.45)
-            if i >= 14:
+            if i >= 15:
                 x3 = x1 + int((i + 0.45) * col_distance / 21.45)
                 x4 = x2 + int((i + 0.45) * col_distance / 21.45)
             y3 = y1 + int((x3 - x1) * gradient)
             y4 = y2 + int((x4 - x2) * gradient)
             cv2.line(draw_img, (x3, y3), (x4, y4), color, linewidth)
-
     # 7位码分割
     else:
         # if(box_new[0][0] <= 3):
@@ -206,18 +205,12 @@ def drawSegLines(img, seg_num, box):
         x2 = box_new[1][0]
         y2 = box_new[1][1]
 
-        for i in range(seg_num):
+        for i in range(1, seg_num):
             # 字母比数字大
-            if(i > 0):
-                x3 = x1 + int((i + 0.45) * col_distance / 7.45)
-                x4 = x2 + int((i + 0.45) * col_distance / 7.45)
-                y3 = y1 + int((x3 - x1) * gradient)
-                y4 = y2 + int((x4 - x2) * gradient)
-            else:
-                x3 = x1
-                x4 = x2
-                y3 = y1
-                y4 = y2
+            x3 = x1 + int((i + 0.45) * col_distance / 7.45)
+            x4 = x2 + int((i + 0.45) * col_distance / 7.45)
+            y3 = y1 + int((x3 - x1) * gradient)
+            y4 = y2 + int((x4 - x2) * gradient)
             cv2.line(draw_img, (x3, y3), (x4, y4), color, linewidth)
     return draw_img
 
