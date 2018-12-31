@@ -34,6 +34,9 @@ def imagePipeline(img):
 
     # 获取 7 位码
     img_num7, box7 = Num7(calibrated_img).data
+    # img_print = calibrated_img
+    # print(len(img_print))
+    # print(box21)
     rotated_img7 = picSlim(reshape(detectrectangle.rotate(calibrated_img, box21[0], box21[1], box21[2], box21[3]), flip=2), 2)
 
     img_num_all = NumAll(calibrated_img, box21, box7).data
