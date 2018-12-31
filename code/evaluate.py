@@ -109,7 +109,6 @@ for i in range(len(image_path)):
     pred_str7 = ''
 
     for j in range(21):
-
         data = seg_list[j].flatten()        # 数据展开
         data = (data>0).astype(np.int8)
         data = data.reshape(1, -1)          # 增加一个维度

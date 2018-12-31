@@ -5,6 +5,7 @@ from dataset import DataSet
 from functions import *
 
 alphabet = [chr(i) for i in range(65,91)]        # 字母表
+USENUM = 100      # 使用的图片数量
 
 ''' 
 [description]
@@ -44,7 +45,7 @@ def main():
     images = DataSet(root='../train_data', mode='all', ratio=0.8).data
 
     # 原始图像的list
-    pic = [cv2.imread(data[0], cv2.IMREAD_GRAYSCALE) for data in images][:10] # 测试新功能时只操作 10 张图像
+    pic = [cv2.imread(data[0], cv2.IMREAD_GRAYSCALE) for data in images][:USENUM] # 测试新功能时只操作 10 张图像
     pic_name = [data[1] for data in images]
     pic_label21 = [data[2] for data in images]
 

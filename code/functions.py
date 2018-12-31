@@ -349,9 +349,14 @@ class DetectRectangle(object):
         raw_img = img
         img = binarize(img)  # 二值化
         img = cv2.medianBlur(img, 9)  # 中值滤波，去噪
+        # img = morphology(img, mode='close', kernel_size=21)  # 扩张操作
+        # # img = self.morphology(img, mode='dilate', kernel_size=11)           # 第二次扩张操作，使图像中心完全平滑
+        # img = morphology(img, mode='open', kernel_size=101)  # 开操作，去掉车票边上的小凸起
+
         img = morphology(img, mode='close', kernel_size=21)  # 扩张操作
-        # img = self.morphology(img, mode='dilate', kernel_size=11)           # 第二次扩张操作，使图像中心完全平滑
-        img = morphology(img, mode='open', kernel_size=101)  # 开操作，去掉车票边上的小凸起
+        img = morphology(img, mode='open', kernel_size=81)  # 开操作，去掉车票边上的小凸起
+        cv2.imwrite('./1.png', img)
+
 
         edge = cv2.Canny(img, 50, 150)  # 边缘检测
 
@@ -562,8 +567,16 @@ class Num21(object):
         num21_rect = np.zeros((row_sub, col_sub))
         num21_rect = binarized_img[row_num21_upper:row_num21_lower, col_num21_left:col_num21_right]
         num21_rect = cv2.bitwise_not(num21_rect)
-        num21_rect = morphology(num21_rect, 'close', 21)
-        num21_rect = morphology(num21_rect, 'dilate', 7)
+        # tmp_num21_rect = num21_rect.copy()
+
+        try:
+            num21_rect = morphology(num21_rect, 'close', 21)
+            num21_rect = morphology(num21_rect, 'dilate', 7)
+        except:
+            print('cnm')
+            cv2.imwrite('./tmp.png', binarized_img)
+            print(row_num21_upper, row_num21_lower, col_num21_left, col_num21_right)
+            
         img_res = np.zeros((row, col))
         img_res = img_res.astype(np.uint8)
         img_res[row_num21_upper:row_num21_lower, col_num21_left:col_num21_right] = num21_rect
