@@ -117,16 +117,16 @@ def picSlim(img, left_border = 0, right_border = 0):
 
 '''
 [description]
-给定划分的个数以及box，在图上画出分割线
+对输入的顶点集合按照左上角、左下角、右下角、右上角的顺序排序
 '''
-def drawSegLines(img, seg_num, box):
-    # 重新排列box，使得四个顶点按照左下角，左上角，右上角，右下角的顺序排列
+def boxRelist(box):
+    # 重新排列box，使得四个顶点按照左上角、左下角、右下角、右上角的顺序排列
     box_relist = []
     box_new = []
     for i in range(len(box)):
         box_relist.append([box[i][0], box[i][1], box[i][0] + box[i][1]])
     min_num = 10000
-    # 斜率一般不大，因此行列坐标和最小的是左下角，即box_new[0]
+    # 斜率一般不大，因此行列坐标和最小的是左上角，即box_new[0]
     for i in range(4):
         if box_relist[i][2] < min_num:
             min_index = i
@@ -155,6 +155,15 @@ def drawSegLines(img, seg_num, box):
     # box_new[3]
     box_new.append([box_relist[0][0], box_relist[0][1]])
 
+    return box_new
+
+'''
+[description]
+给定划分的个数以及box，在图上画出分割线
+'''
+def drawSegLines(img, seg_num, box):
+
+    box_new = boxRelist(box)
     gradient = (box_new[2][1] - box_new[1][1]) / (box_new[2][0] - box_new[1][0])
 
     color = (0, 0, 255)
@@ -181,13 +190,17 @@ def drawSegLines(img, seg_num, box):
         for i in range(1, seg_num):
             # 字母比数字大
             if i < 15:
-                x3 = x1 + int(i * col_distance / 21.45)
-                x4 = x2 + int(i * col_distance / 21.45)
+                x3 = x1 + round(i * col_distance / 21.45)
+                x4 = x2 + round(i * col_distance / 21.45)
             if i >= 15:
-                x3 = x1 + int((i + 0.45) * col_distance / 21.45)
-                x4 = x2 + int((i + 0.45) * col_distance / 21.45)
-            y3 = y1 + int((x3 - x1) * gradient)
-            y4 = y2 + int((x4 - x2) * gradient)
+                x3 = x1 + round((i + 0.45) * col_distance / 21.45)
+                x4 = x2 + round((i + 0.45) * col_distance / 21.45)
+            y3 = y1 + round((x3 - x1) * gradient)
+            y4 = y2 + round((x4 - x2) * gradient)
+            x3 = int(x3)
+            x4 = int(x4)
+            y3 = int(y3)
+            y4 = int(y4)
             cv2.line(draw_img, (x3, y3), (x4, y4), color, linewidth)
     # 7位码分割
     else:
@@ -207,10 +220,14 @@ def drawSegLines(img, seg_num, box):
 
         for i in range(1, seg_num):
             # 字母比数字大
-            x3 = x1 + int((i + 0.45) * col_distance / 7.45)
-            x4 = x2 + int((i + 0.45) * col_distance / 7.45)
-            y3 = y1 + int((x3 - x1) * gradient)
-            y4 = y2 + int((x4 - x2) * gradient)
+            x3 = x1 + round((i + 0.45) * col_distance / 7.45)
+            x4 = x2 + round((i + 0.45) * col_distance / 7.45)
+            y3 = y1 + round((x3 - x1) * gradient)
+            y4 = y2 + round((x4 - x2) * gradient)
+            x3 = int(x3)
+            x4 = int(x4)
+            y3 = int(y3)
+            y4 = int(y4)
             cv2.line(draw_img, (x3, y3), (x4, y4), color, linewidth)
     return draw_img
 
@@ -549,6 +566,11 @@ class Num21(object):
         row_num21_lower = row_bitcode_lower + int(1.6/4.5*row_bitcode_distance)
         col_num21_right = col_bitcode_left - int(9.3/4.5*row_bitcode_distance)
         col_num21_left = col_bitcode_left - int(20.7/4.5*row_bitcode_distance)
+        # 越界判断
+        if col_num21_left < 0:
+            col_num21_left = 0
+        if row_num21_lower > row:
+            row_num21_lower = row
 
         # # 在原图中大致画出21位码矩形框
         # box_old = np.zeros((4, 2))
@@ -573,7 +595,7 @@ class Num21(object):
             num21_rect = morphology(num21_rect, 'close', 21)
             num21_rect = morphology(num21_rect, 'dilate', 7)
         except:
-            print('cnm')
+            print('Num21 error')
             cv2.imwrite('./tmp.png', binarized_img)
             print(row_num21_upper, row_num21_lower, col_num21_left, col_num21_right)
             
@@ -679,6 +701,7 @@ class Num7(object):
         row_num7_lower = row_bitcode_upper - int(7.3 / 4.5 * row_bitcode_distance)
         col_num7_right = col_bitcode_left - int(13 / 4.5 * row_bitcode_distance)
         col_num7_left = col_bitcode_left - int(22.2 / 4.5 * row_bitcode_distance)
+        # 越界判断
         if row_num7_upper < 0:
             row_num7_upper = 0
         if col_num7_left < 0:
@@ -704,8 +727,15 @@ class Num7(object):
         # 现在汉字边缘仍有残留的白点，利用中值滤波去除这些盐噪声
         num7_rect = cv2.medianBlur(num7_rect, 3)
         num7_rect = cv2.medianBlur(num7_rect, 3)
-        num7_rect = morphology(num7_rect, 'close', 19)
-        num7_rect = morphology(num7_rect, 'dilate', 11)
+        # num7_rect = morphology(num7_rect, 'close', 19)
+        # num7_rect = morphology(num7_rect, 'dilate', 11)
+        try:
+            num7_rect = morphology(num7_rect, 'close', 19)
+            num7_rect = morphology(num7_rect, 'dilate', 11)
+        except:
+            print('Num7 error')
+            cv2.imwrite('./tmp.png', binarized_img)
+            print(row_num7_upper, row_num7_lower, col_num7_left, col_num7_right)
 
         # for i in range(row_sub):
         #     print(i)
