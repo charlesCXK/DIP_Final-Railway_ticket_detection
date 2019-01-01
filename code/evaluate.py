@@ -5,6 +5,7 @@ import cv2
 import os
 import shutil
 import math
+import argparse
 import numpy as np
 
 from sklearn import svm
@@ -78,17 +79,20 @@ class Classifier(object):
         res = np.array(pred) == y
         print('accuracy is {}'.format(np.sum(res)/res.shape[0]))
 
+# 解析命令行命令，获取测试图片所在文件夹
+parser = argparse.ArgumentParser(description='Test function for DIP Final Work')
+parser.add_argument('--dir', default='mytestdir', type=str)
+args = parser.parse_args()
+
+test_images =  [item for item in os.listdir(args.dir) if item.endswith('.bmp') or item.endswith('.png') or item.endswith('.jpg')]
+if len(test_images) < 1:
+    raise Exception("Invalid dir name!")
+
 # 定义分类器
 number_classify = Classifier('../number_data', 1, 10, C=0.4, predict=False).clf
 letter_classify = Classifier('../letter_data', 1, 26, C=1, predict=False).clf  
 
-# 获取测试集图像的路径
-with open('annotation.txt', 'r', encoding='utf-8') as f:
-    lines = f.readlines()
-image_path = [line.strip() for line in lines if len(line.strip())>0]
-
 saveDir = 'segments'
-testRoot = '../train_data'
 f = open('prediction.txt', 'w', encoding='utf-8')       # 预测结果
 
 if (os.path.exists(saveDir) == 0):
@@ -98,12 +102,13 @@ else:
     os.mkdir(saveDir)
 
 # 处理每张图像
-for i in range(len(image_path)):
-    img = cv2.imread(os.path.join(testRoot, image_path[i]), cv2.IMREAD_GRAYSCALE)     # 读取图像
+for i in range(len(test_images)):
+    print('handling {}'.format(i+1))
+    img = cv2.imread(os.path.join(args.dir, test_images[i]), cv2.IMREAD_GRAYSCALE)     # 读取图像
     func_res = imagePipeline(img)
     seg_list, img_num_all = func_res[2], func_res[3]
 
-    cv2.imwrite(os.path.join(saveDir, image_path[i]), img_num_all)
+    cv2.imwrite(os.path.join(saveDir, test_images[i]), img_num_all)
 
     pred_str21 = ''
     pred_str7 = ''
@@ -123,6 +128,6 @@ for i in range(len(image_path)):
             pred_str21 = pred_str21 + alphabet[pred_number]
 
     pred_str7 = pred_str21[-7:]
-    f.write(image_path[i] + ' ' + pred_str21 + ' ' + pred_str7 + '\n')
+    f.write(test_images[i] + ' ' + pred_str21 + ' ' + pred_str7 + '\n')
     
 f.close()

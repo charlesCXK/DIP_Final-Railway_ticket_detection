@@ -234,14 +234,18 @@ def drawSegLines(img, seg_num, box):
         x2 = box_new[1][0]
         y2 = box_new[1][1]
 
+
+        ratio = 1.52
+        unit_scale = col_distance / (20 + ratio)
+
         for i in range(1, seg_num):
             # 字母比数字大
             if i < 15:
-                x3 = round(x1 + i * col_distance / 21.45)
-                x4 = round(x2 + i * col_distance / 21.45)
+                x3 = round(x1 + i * unit_scale)
+                x4 = round(x2 + i * unit_scale)
             if i >= 15:
-                x3 = round(x1 + (i + 0.45) * col_distance / 21.45)
-                x4 = round(x2 + (i + 0.45) * col_distance / 21.45)
+                x3 = round(x1 + (i + ratio-1) * unit_scale)
+                x4 = round(x2 + (i + ratio-1) * unit_scale)
             y3 = round(y1 + (x3 - x1) * gradient)
             y4 = round(y2 + (x4 - x2) * gradient)
             x3 = int(x3)
@@ -342,7 +346,7 @@ def findBitcode(img):
     col_bitcode_ori = int(col_bitcode_ori / 2)
     # 由于有二维码缺损的异常数据，只取左边一半
     lower_right1 = lower_right0[:, 0:col_bitcode_ori]
-    lower_right1 = cv2.medianBlur(lower_right1, 3)
+    # lower_right1 = cv2.medianBlur(lower_right1, 3)
     lower_right1 = morphology(lower_right1, 'close', 21)
     row_bitcode = len(lower_right1)
     col_bitcode = np.size(lower_right1[0])
@@ -465,8 +469,8 @@ class DetectRectangle(object):
         # img = morphology(img, mode='open', kernel_size=101)  # 开操作，去掉车票边上的小凸起
 
         img = morphology(img, mode='close', kernel_size=21)  # 扩张操作
-        img = morphology(img, mode='open', kernel_size=81)  # 开操作，去掉车票边上的小凸起
-        cv2.imwrite('./1.png', img)
+        img = morphology(img, mode='open', kernel_size=101)  # 开操作，去掉车票边上的小凸起
+        # cv2.imwrite('./1.png', img)
 
 
         edge = cv2.Canny(img, 50, 150)  # 边缘检测
