@@ -5,7 +5,7 @@ from dataset import DataSet
 from functions import *
 
 alphabet = [chr(i) for i in range(65,91)]        # 字母表
-USENUM = 1      # 使用的图片数量
+USENUM = 100      # 使用的图片数量
 
 ''' 
 [description]
@@ -19,8 +19,6 @@ def imagePipeline(img):
     # 获取最小拟合矩形的四个点, box: [ [x1,y1], ... [x4,y4] ], 中心坐标 center_pos， 旋转角度 angle
     # https://blog.csdn.net/qq_24237837/article/details/77850496
     img_rectangle, box, center_pos, angle = detectrectangle.rectangleFitting(img)
-
-    cv2.imwrite('tmp.png', img_rectangle)
 
     # 旋转并裁剪后的图像
     rotated_img = detectrectangle.rotate(img, box[0], box[1], box[2], box[3])
