@@ -227,7 +227,7 @@ def drawSegLines(img, seg_num, box):
 
         detectrectangle.drawLine(draw_img, box_new, color, linewidth)
 
-        # 划分比例，字母大约是数字的1.6倍
+        # 划分比例，字母大约是数字的1.5倍
         col_distance = box_new[2][0] - box_new[1][0]
         x1 = box_new[0][0]
         y1 = box_new[0][1]
@@ -309,7 +309,7 @@ def drawSegLines(img, seg_num, box):
         detectrectangle.drawLine(draw_img, box_new, color, linewidth)
 
 
-        # 划分比例，字母大约是数字的1.6倍
+        # 划分比例，字母大约是数字的1.5倍
         col_distance = box_new[2][0] - box_new[1][0]
         x1 = box_new[0][0]
         y1 = box_new[0][1]
