@@ -1,6 +1,20 @@
+import os
+import shutil
+import cv2
 from dataset import DataSet
 images = DataSet(root='../train_data', mode='test', ratio=0.8).data
 print(images[0])
+
+testdir = './test_data'
+if (os.path.exists(testdir) == 0):
+    os.mkdir(testdir)
+else:
+    shutil.rmtree(testdir)
+    os.mkdir(testdir)
+
+for img_path, img_name, img_label in images:
+	img = cv2.imread(img_path)
+	cv2.imwrite(os.path.join(testdir, img_name), img)
 
 '''
 [description]

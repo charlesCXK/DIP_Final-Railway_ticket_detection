@@ -9,6 +9,7 @@ import argparse
 import numpy as np
 
 from sklearn import svm
+from sklearn.externals import joblib
 from mainprocess import imagePipeline
 
 alphabet = [chr(i) for i in range(65,91)]        # 字母表
@@ -16,7 +17,7 @@ alphabet = [chr(i) for i in range(65,91)]        # 字母表
 
 class Classifier(object):
     """docstring for Classifier"""
-    def __init__(self, root, ratio, classnum, C=1, predict=False):
+    def __init__(self, root, ratio, classnum, C=1, predict=False, mode='digit'):
         super(Classifier, self).__init__()
         self.root = root
         self.ratio = ratio
@@ -70,7 +71,8 @@ class Classifier(object):
         return (np.array(train_data)>0).astype(np.int8), np.array(train_label), (np.array(test_data)>0).astype(np.int8), np.array(test_label)
 
     def train(self, x, y):
-        self.clf.fit(x, y)
+        if len(x) > 0:
+            self.clf.fit(x, y)
         return self.clf
 
     def predict(self, x, y):
@@ -81,7 +83,8 @@ class Classifier(object):
 
 # 解析命令行命令，获取测试图片所在文件夹
 parser = argparse.ArgumentParser(description='Test function for DIP Final Work')
-parser.add_argument('--dir', default='mytestdir', type=str)
+parser.add_argument('--dir', default='test_data', type=str)
+parser.add_argument('--txt', default='annotation.txt', type=str)
 args = parser.parse_args()
 
 test_images =  [item for item in os.listdir(args.dir) if item.endswith('.bmp') or item.endswith('.png') or item.endswith('.jpg')]
@@ -101,14 +104,18 @@ else:
     shutil.rmtree(saveDir)
     os.mkdir(saveDir)
 
+with open(args.txt, 'r', encoding='utf-8') as testf:
+    test_lines = testf.readlines()
+test_imgs = [item.strip() for item in test_lines if len(item)>0]
+
 # 处理每张图像
-for i in range(len(test_images)):
+for i in range(len(test_imgs)):
     print('handling {}'.format(i+1))
-    img = cv2.imread(os.path.join(args.dir, test_images[i]), cv2.IMREAD_GRAYSCALE)     # 读取图像
+    img = cv2.imread(os.path.join(args.dir, test_imgs[i]), cv2.IMREAD_GRAYSCALE)     # 读取图像
     func_res = imagePipeline(img)
     seg_list, img_num_all = func_res[2], func_res[3]
 
-    cv2.imwrite(os.path.join(saveDir, test_images[i]), img_num_all)
+    cv2.imwrite(os.path.join(saveDir, test_imgs[i]), img_num_all)
 
     pred_str21 = ''
     pred_str7 = ''
@@ -128,6 +135,6 @@ for i in range(len(test_images)):
             pred_str21 = pred_str21 + alphabet[pred_number]
 
     pred_str7 = pred_str21[-7:]
-    f.write(test_images[i] + ' ' + pred_str21 + ' ' + pred_str7 + '\n')
+    f.write(test_imgs[i] + ' ' + pred_str21 + ' ' + pred_str7 + '\n')
     
 f.close()
